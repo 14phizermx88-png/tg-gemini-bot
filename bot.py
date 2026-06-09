@@ -89,6 +89,29 @@ tools=[types.Tool(google_search=types.GoogleSearch())]
                 bot.reply_to(message, f"Gemini отвалился: {e}")
                 break
 
+from flask import request, Flask
+import os
+
+app = Flask(__name__)
+
+# Твой токен из переменных Render
+TOKEN = os.environ['TELEGRAM_TOKEN']
+WEBHOOK_URL = 'https://tg-gemini-bot-6n8p.onrender.com/' + TOKEN
+
+# Это принимает сообщения от Telegram
+@app.route('/' + TOKEN, methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return 'ok', 200
+
+# Это чтобы 1 раз поставить вебхук
+@app.route('/')
+def set_webhook():
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
+    return 'Webhook настроен! Можешь писать боту.', 200
+
 if __name__ == '__main__':
-    print("Бот запущен с Pollinations... Ctrl+C чтобы выключить")
-    bot.infinity_polling(timeout=10, long_polling_timeout=5)
+    app.run(host='0.0.0.0', port=10000)
