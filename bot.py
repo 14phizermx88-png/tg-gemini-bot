@@ -94,24 +94,38 @@ import os
 
 app = Flask(__name__)
 
-# Твой токен из переменных Render
-TOKEN = os.environ['TELEGRAM_TOKEN']
-WEBHOOK_URL = 'https://tg-gemini-bot-6n8p.onrender.com/' + TOKEN
+import threading
+from flask import request
 
-# Это принимает сообщения от Telegram
-@app.route('/' + TOKEN, methods=['POST'])
+def handle_message(message):
+    try:
+        bot.send_chat_action(message.chat.id, 'typing')
+        answer = ask_gemini(SYSTEM_PROMPT + "\n" + message.text)
+        bot.send_message(message.chat.id, answer)
+    except Exception as e:
+        print(f"Ошибка в обработке: {e}")
+
+@bot.message_handler(func=lambda message: True)
+def echo_message(message):
+    # Запускаем обработку в отдельном потоке чтобы не блочить вебхук
+    thread = threading.Thread(target=handle_message, args=(message,))
+    thread.start()
+
+@app.route('/' + TELEGRAM_TOKEN, methods=['POST'])
 def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return 'ok', 200
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return 'ok', 200
+    else:
+        return 'error', 403
 
-# Это чтобы 1 раз поставить вебхук
 @app.route('/')
-def set_webhook():
+def index():
     bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    return 'Webhook настроен! Можешь писать боту.', 200
+    bot.set_webhook(url='https://tg-gemini-bot-6n8p.onrender.com/' + TELEGRAM_TOKEN)
+    return 'Webhook set. Bot is alive.', 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
