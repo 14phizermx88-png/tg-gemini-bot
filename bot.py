@@ -1,4 +1,3 @@
-import threading
 from flask import Flask
 import os
 
@@ -7,11 +6,6 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return "Bot is alive!"
-
-def run_flask():
-  port = int(os.environ.get('PORT', 5000))
-  app.run(host='0.0.0.0', port=port)
-
 threading.Thread(target=run_flask).start()
 
 import os
@@ -92,7 +86,6 @@ tools=[types.Tool(google_search=types.GoogleSearch())]
 from flask import request, Flask
 import os
 
-app = Flask(__name__)
 
 import threading
 from flask import request
@@ -100,13 +93,10 @@ from flask import request
 def handle_message(message):
     try:
         bot.send_chat_action(message.chat.id, 'typing')
-        answer = ask_gemini(SYSTEM_PROMPT + "\n" + message.text)
         bot.send_message(message.chat.id, answer)
     except Exception as e:
         print(f"Ошибка в обработке: {e}")
 
-@bot.message_handler(func=lambda message: True)
-def echo_message(message):
     # Запускаем обработку в отдельном потоке чтобы не блочить вебхук
     thread = threading.Thread(target=handle_message, args=(message,))
     thread.start()
